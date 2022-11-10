@@ -8,10 +8,14 @@ use std::io;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
-/// Search for a pattern in a file and display the lines that contain it.
 #[derive(Parser)]
 struct Cli {
     path: std::path::PathBuf,
+}
+
+struct Dir {
+    path: String,
+    depth: usize,
 }
 
 fn is_not_hidden(entry: &DirEntry) -> bool {
@@ -22,15 +26,12 @@ fn is_not_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn handle_dir(dir: &DirEntry, search: &String) {
-    if dir
+fn handle_dir(dir: &DirEntry, search: &String) -> bool {
+    return dir
         .path()
         .to_str()
         .unwrap()
-        .ends_with(format!("/{}", search).as_str())
-    {
-        println!("{}", dir.path().display())
-    }
+        .ends_with(format!("/{}", search).as_str());
 }
 
 fn main() -> Result<()> {
@@ -38,12 +39,32 @@ fn main() -> Result<()> {
     let path = &args.path.into_os_string().into_string().unwrap();
 
     let root = home_dir().unwrap();
-    WalkDir::new(root)
+    let mut res = Dir {
+        path: "/".to_string(),
+        depth: 0,
+    };
+    for entry in WalkDir::new(root)
         .min_depth(1)
         .max_depth(3)
         .into_iter()
         .filter_entry(|e| is_not_hidden(e))
         .filter_map(|v| v.ok())
-        .for_each(|x| handle_dir(&x, path));
+    {
+        if !handle_dir(&entry, path) {
+            continue;
+        }
+
+        if res.path == "/" {
+            res.path = entry.path().to_str().unwrap().to_string();
+            res.depth = entry.depth();
+            continue;
+        }
+
+        if res.depth > entry.depth() {
+            res.path = entry.path().to_str().unwrap().to_string();
+            res.depth = entry.depth();
+        }
+    }
+    println!("{}", res.path);
     Ok(())
 }
