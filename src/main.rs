@@ -27,7 +27,7 @@ fn handle_dir(dir: &DirEntry, search: &String) {
         .path()
         .to_str()
         .unwrap()
-        .contains(format!("/{}/", search).as_str())
+        .ends_with(format!("/{}", search).as_str())
     {
         println!("{}", dir.path().display())
     }
@@ -39,6 +39,8 @@ fn main() -> Result<()> {
 
     let root = home_dir().unwrap();
     WalkDir::new(root)
+        .min_depth(1)
+        .max_depth(3)
         .into_iter()
         .filter_entry(|e| is_not_hidden(e))
         .filter_map(|v| v.ok())
